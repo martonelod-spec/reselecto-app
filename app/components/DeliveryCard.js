@@ -2,8 +2,9 @@ import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import StatusBadge from './StatusBadge';
+import CallStatusIcon from './CallStatusIcon';
 
-export default function DeliveryCard({ delivery, onPress }) {
+export default function DeliveryCard({ delivery, callLog, onPress }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.header}>
@@ -38,6 +39,11 @@ export default function DeliveryCard({ delivery, onPress }) {
           <Ionicons name="pricetag-outline" size={13} color="#888" />
           <Text style={styles.footerText}>{delivery.id || '—'}</Text>
         </View>
+        {callLog?.latestOutcome ? (
+          <View style={styles.footerItem}>
+            <CallStatusIcon outcome={callLog.latestOutcome} size={13} />
+          </View>
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -89,6 +95,7 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
     paddingTop: 8,
