@@ -2,20 +2,59 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, ScrollView, Text, StyleSheet, TouchableOpacity,
   TextInput, Alert, ActivityIndicator, Linking, SafeAreaView,
+  Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { useDropboxImages } from '../hooks/useDropboxImages';
+import { useCallLog } from '../hooks/useCallLog';
 import { updateDeliveryStatus, updateDeliveryNotes, extractPhoneNumber } from '../services/googleSheets';
 import StatusBadge from '../components/StatusBadge';
 import StatusPicker from '../components/StatusPicker';
 import ImageGallery from '../components/ImageGallery';
+import CallStatusIcon from '../components/CallStatusIcon';
 import { SMS_CONFIG } from '../config/sms';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const OUTCOME_OPTIONS = [
+  {
+    label: 'Beszéltünk — vár az árura',
+    outcome: 'Visszaigazolt',
+    icon: 'checkmark-circle',
+    color: '#1A7A40',
+  },
+  {
+    label: 'Nem vette fel',
+    outcome: 'Nem elérhető',
+    icon: 'close-circle',
+    color: '#C0001A',
+  },
+  {
+    label: 'Visszahívást kér',
+    outcome: 'Visszahívandó',
+    icon: 'time',
+    color: '#E07B00',
+  },
+];
+
+function formatCallTime(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  return `${hh}:${mm} – ${dd}.${mo}.${d.getFullYear()}`;
+}
+
+// ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function DeliveryDetailScreen({ route, navigation }) {
   const { delivery: initialDelivery } = route.params;
   const [delivery, setDelivery] = useState(initialDelivery);
   const [statusPickerVisible, setStatusPickerVisible] = useState(false);
+  const [callOutcomeVisible, setCallOutcomeVisible] = useState(false);
   const [notes, setNotes] = useState(initialDelivery.alteInfo || '');
   const [notesChanged, setNotesChanged] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
@@ -23,8 +62,10 @@ export default function DeliveryDetailScreen({ route, navigation }) {
   const [callMade, setCallMade] = useState(false);
 
   const { images, loading: imagesLoading, loadImages } = useDropboxImages(delivery.id);
+  const { callLogs, logCall } = useCallLog();
 
   const phoneNumber = extractPhoneNumber(delivery.alteInfo);
+  const currentCallLog = callLogs[delivery.id] || null;
 
   useEffect(() => {
     loadImages();
@@ -33,13 +74,12 @@ export default function DeliveryDetailScreen({ route, navigation }) {
   const handleStatusSelect = useCallback(async (newStatus) => {
     setStatusPickerVisible(false);
     if (newStatus === delivery.status) return;
-
     setSavingStatus(true);
     try {
       await updateDeliveryStatus(delivery.rowIndex, newStatus);
       setDelivery((prev) => ({ ...prev, status: newStatus }));
       Toast.show({ type: 'success', text1: 'Státusz frissítve', text2: newStatus, position: 'bottom' });
-    } catch (err) {
+    } catch {
       Toast.show({ type: 'error', text1: 'Hiba', text2: 'Nem sikerült frissíteni a státuszt.', position: 'bottom' });
     } finally {
       setSavingStatus(false);
@@ -53,7 +93,7 @@ export default function DeliveryDetailScreen({ route, navigation }) {
       setDelivery((prev) => ({ ...prev, alteInfo: notes }));
       setNotesChanged(false);
       Toast.show({ type: 'success', text1: 'Megjegyzés mentve', position: 'bottom' });
-    } catch (err) {
+    } catch {
       Toast.show({ type: 'error', text1: 'Hiba', text2: 'Nem sikerült menteni.', position: 'bottom' });
     } finally {
       setSavingNotes(false);
@@ -64,7 +104,14 @@ export default function DeliveryDetailScreen({ route, navigation }) {
     if (!phoneNumber) return;
     Linking.openURL(`tel:${phoneNumber}`);
     setCallMade(true);
+    // Show outcome picker after initiating call — it stays visible when user returns from dialer
+    setCallOutcomeVisible(true);
   }, [phoneNumber]);
+
+  const handleOutcomeSelect = useCallback((outcome) => {
+    logCall(delivery.id, outcome);
+    setCallOutcomeVisible(false);
+  }, [delivery.id, logCall]);
 
   const handleSMS = useCallback(() => {
     if (!phoneNumber) return;
@@ -122,22 +169,22 @@ export default function DeliveryDetailScreen({ route, navigation }) {
 
         {/* Alapadatok */}
         <Section title="Alapadatok">
-          <InfoRow icon="pricetag-outline" label="ID" value={delivery.id} />
-          <InfoRow icon="document-text-outline" label="Szállítólevél" value={delivery.document} />
-          <InfoRow icon="calendar-outline" label="Dátum" value={delivery.date} />
-          <InfoRow icon="car-outline" label="Rendszám" value={delivery.nrVehicul} />
-          <InfoRow icon="layers-outline" label="Zóna" value={delivery.zona} />
-          <InfoRow icon="swap-horizontal-outline" label="Tr" value={delivery.tr} />
+          <InfoRow icon="pricetag-outline"       label="ID"          value={delivery.id} />
+          <InfoRow icon="document-text-outline"  label="Szállítólevél" value={delivery.document} />
+          <InfoRow icon="calendar-outline"       label="Dátum"       value={delivery.date} />
+          <InfoRow icon="car-outline"            label="Rendszám"    value={delivery.nrVehicul} />
+          <InfoRow icon="layers-outline"         label="Zóna"        value={delivery.zona} />
+          <InfoRow icon="swap-horizontal-outline" label="Tr"         value={delivery.tr} />
         </Section>
 
         {/* Cím */}
         <Section title="Cím">
           <InfoRow icon="location-outline" label="Helység" value={delivery.localitate} />
-          <InfoRow icon="map-outline" label="Megye" value={delivery.judet} />
-          <InfoRow icon="home-outline" label="Cím" value={delivery.adresa} />
+          <InfoRow icon="map-outline"      label="Megye"   value={delivery.judet} />
+          <InfoRow icon="home-outline"     label="Cím"     value={delivery.adresa} />
         </Section>
 
-        {/* Hívás & SMS */}
+        {/* Kapcsolat */}
         {phoneNumber ? (
           <Section title="Kapcsolat">
             <View style={styles.phoneRow}>
@@ -156,6 +203,18 @@ export default function DeliveryDetailScreen({ route, navigation }) {
                 </TouchableOpacity>
               )}
             </View>
+            {/* Call log status */}
+            {currentCallLog && (
+              <View style={styles.callLogRow}>
+                <CallStatusIcon outcome={currentCallLog.latestOutcome} size={15} />
+                <Text style={styles.callLogText}>
+                  {currentCallLog.latestOutcome}
+                  {currentCallLog.lastCallTime
+                    ? ` · ${formatCallTime(currentCallLog.lastCallTime)}`
+                    : ''}
+                </Text>
+              </View>
+            )}
           </Section>
         ) : null}
 
@@ -211,12 +270,49 @@ export default function DeliveryDetailScreen({ route, navigation }) {
 
       </ScrollView>
 
+      {/* Status picker */}
       <StatusPicker
         visible={statusPickerVisible}
         currentStatus={delivery.status}
         onSelect={handleStatusSelect}
         onClose={() => setStatusPickerVisible(false)}
       />
+
+      {/* Call outcome modal */}
+      <Modal
+        visible={callOutcomeVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setCallOutcomeVisible(false)}
+      >
+        <Pressable style={styles.outcomeOverlay} onPress={() => setCallOutcomeVisible(false)}>
+          <View style={styles.outcomeSheet}>
+            <View style={styles.outcomeHandle} />
+            <Text style={styles.outcomeTitle}>Hívás eredménye</Text>
+            <Text style={styles.outcomeSubtitle}>{phoneNumber}</Text>
+            {OUTCOME_OPTIONS.map(({ label, outcome, icon, color }) => (
+              <TouchableOpacity
+                key={outcome}
+                style={styles.outcomeOption}
+                onPress={() => handleOutcomeSelect(outcome)}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.outcomeIconWrap, { backgroundColor: `${color}22` }]}>
+                  <Ionicons name={icon} size={22} color={color} />
+                </View>
+                <Text style={styles.outcomeOptionText}>{label}</Text>
+                <Ionicons name="chevron-forward" size={18} color="#CCC" />
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.outcomeCancelBtn}
+              onPress={() => setCallOutcomeVisible(false)}
+            >
+              <Text style={styles.outcomeCancelText}>Mégse</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -303,6 +399,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   smsBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  callLogRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
+  },
+  callLogText: { fontSize: 13, color: '#555', flex: 1 },
   notesInput: {
     borderWidth: 1,
     borderColor: '#E0E0E0',
@@ -338,4 +444,59 @@ const styles = StyleSheet.create({
   },
   signatureBtn: { backgroundColor: '#185FA5' },
   mediaBtnText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  // Call outcome modal
+  outcomeOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  outcomeSheet: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingBottom: 30,
+  },
+  outcomeHandle: {
+    width: 40, height: 4, backgroundColor: '#DDD', borderRadius: 2,
+    alignSelf: 'center', marginTop: 12, marginBottom: 6,
+  },
+  outcomeTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    textAlign: 'center',
+    paddingTop: 4,
+  },
+  outcomeSubtitle: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  outcomeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+    gap: 14,
+  },
+  outcomeIconWrap: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  outcomeOptionText: { flex: 1, fontSize: 15, color: '#1A1A1A', fontWeight: '500' },
+  outcomeCancelBtn: {
+    marginTop: 8,
+    marginHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#F0F0F0',
+    alignItems: 'center',
+  },
+  outcomeCancelText: { fontSize: 15, fontWeight: '600', color: '#444' },
 });
