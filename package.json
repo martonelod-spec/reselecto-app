@@ -30,6 +30,7 @@
     "react-native-screens": "3.31.1",
     "react-native-webview": "13.8.6",
     "@react-native-async-storage/async-storage": "1.23.1",
+    "react-native-maps": "1.14.0",
     "react-native-modal": "^13.0.1",
     "react-native-toast-message": "^2.2.0"
   },
