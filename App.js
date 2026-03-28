@@ -11,6 +11,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 import LoginScreen from './app/screens/LoginScreen';
 import HomeScreen from './app/screens/HomeScreen';
+import MapScreen from './app/screens/MapScreen';
 import DeliveryDetailScreen from './app/screens/DeliveryDetailScreen';
 import CameraScreen from './app/screens/CameraScreen';
 import SignatureScreen from './app/screens/SignatureScreen';
@@ -18,7 +19,6 @@ import SignatureScreen from './app/screens/SignatureScreen';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Bottom Tab navigátor (Iroda esetén több lappal bővíthető)
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -36,8 +36,8 @@ function MainTabs() {
           let iconName;
           if (route.name === 'Home') {
             iconName = focused ? 'list' : 'list-outline';
-          } else if (route.name === 'Search') {
-            iconName = focused ? 'search' : 'search-outline';
+          } else if (route.name === 'Map') {
+            iconName = focused ? 'map' : 'map-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -49,11 +49,15 @@ function MainTabs() {
         component={HomeScreen}
         options={{ tabBarLabel: 'Szállítások' }}
       />
+      <Tab.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ tabBarLabel: 'Térkép' }}
+      />
     </Tab.Navigator>
   );
 }
 
-// Főnavigátor
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
 
