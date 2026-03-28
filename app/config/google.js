@@ -24,6 +24,11 @@ export const GOOGLE_CONFIG = {
 
   // Token URL
   tokenUrl: 'https://oauth2.googleapis.com/token',
+
+  // Google Maps Platform API kulcs
+  // Engedélyezd: "Maps SDK for Android/iOS" + "Geocoding API"
+  // https://console.cloud.google.com/apis/credentials
+  mapsApiKey: process.env.GOOGLE_MAPS_API_KEY || 'YOUR_GOOGLE_MAPS_API_KEY_HERE',
 };
 
 // Oszlop megfeleltetések (A=0, B=1, ...)
