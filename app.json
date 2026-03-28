@@ -13,9 +13,13 @@
     },
     "ios": {
       "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "Az alkalmazásnak kamerára van szüksége a szállítási fotók készítéséhez.",
-        "NSPhotoLibraryUsageDescription": "Az alkalmazásnak hozzá kell férnie a fotótárhoz a képek mentéséhez."
+        "NSPhotoLibraryUsageDescription": "Az alkalmazásnak hozzá kell férnie a fotótárhoz a képek mentéséhez.",
+        "NSLocationWhenInUseUsageDescription": "Az alkalmazás a térképen mutatja a szállítások helyzetét."
       }
     },
     "android": {
@@ -28,8 +32,14 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "CALL_PHONE",
-        "SEND_SMS"
-      ]
+        "SEND_SMS",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
