@@ -1,10 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, Text, StyleSheet, Modal, FlatList, Pressable } from 'react-native';
+import {
+  View, ScrollView, TouchableOpacity, Text,
+  StyleSheet, Modal, FlatList, Pressable,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { STATUS_OPTIONS } from '../config/statusConfig';
 
 export default function FilterBar({ deliveries, filters, onFilterChange }) {
-  const [openPicker, setOpenPicker] = useState(null); // 'judet' | 'localitate' | 'status'
+  const [openPicker, setOpenPicker] = useState(null); // 'judet' | 'localitate' | 'status' | 'zona'
 
   const judete = useMemo(
     () => [...new Set(deliveries.map((d) => d.judet).filter(Boolean))].sort(),
@@ -14,20 +17,13 @@ export default function FilterBar({ deliveries, filters, onFilterChange }) {
     () => [...new Set(deliveries.map((d) => d.localitate).filter(Boolean))].sort(),
     [deliveries]
   );
+  const zonak = useMemo(
+    () => [...new Set(deliveries.map((d) => d.zona).filter(Boolean))].sort(),
+    [deliveries]
+  );
 
-  const activeCount = [filters.judet, filters.localitate, filters.status].filter(Boolean).length;
-
-  const FilterChip = ({ label, field, value }) => {
-    const active = filters[field] === value;
-    return (
-      <TouchableOpacity
-        style={[styles.chip, active && styles.chipActive]}
-        onPress={() => onFilterChange(field, active ? null : value)}
-      >
-        <Text style={[styles.chipText, active && styles.chipTextActive]}>{value}</Text>
-      </TouchableOpacity>
-    );
-  };
+  const activeCount = [filters.judet, filters.localitate, filters.status, filters.zona]
+    .filter(Boolean).length;
 
   const FilterButton = ({ label, field, icon }) => {
     const hasValue = !!filters[field];
@@ -45,15 +41,24 @@ export default function FilterBar({ deliveries, filters, onFilterChange }) {
     );
   };
 
+  const pickerTitle = (field) => {
+    if (field === 'judet') return 'Megye';
+    if (field === 'localitate') return 'Helység';
+    if (field === 'zona') return 'Zóna';
+    return 'Státusz';
+  };
+
   const PickerModal = ({ field, items }) => (
-    <Modal visible={openPicker === field} transparent animationType="slide" onRequestClose={() => setOpenPicker(null)}>
+    <Modal
+      visible={openPicker === field}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setOpenPicker(null)}
+    >
       <Pressable style={styles.modalOverlay} onPress={() => setOpenPicker(null)}>
         <View style={styles.modalSheet}>
           <View style={styles.modalHandle} />
-          <Text style={styles.modalTitle}>
-            {field === 'judet' ? 'Megye' : field === 'localitate' ? 'Helység' : 'Státusz'}
-          </Text>
-          {/* Összes törlése opció */}
+          <Text style={styles.modalTitle}>{pickerTitle(field)}</Text>
           <TouchableOpacity
             style={styles.modalItem}
             onPress={() => { onFilterChange(field, null); setOpenPicker(null); }}
@@ -75,7 +80,9 @@ export default function FilterBar({ deliveries, filters, onFilterChange }) {
                   {item.color ? (
                     <View style={[styles.colorDot, { backgroundColor: item.color }]} />
                   ) : null}
-                  <Text style={[styles.modalItemText, selected && styles.modalItemSelected]}>{val}</Text>
+                  <Text style={[styles.modalItemText, selected && styles.modalItemSelected]}>
+                    {val}
+                  </Text>
                   {selected && <Ionicons name="checkmark" size={18} color="#C0001A" />}
                 </TouchableOpacity>
               );
@@ -94,9 +101,10 @@ export default function FilterBar({ deliveries, filters, onFilterChange }) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
       >
-        <FilterButton label="Megye" field="judet" icon="map-outline" />
+        <FilterButton label="Megye"  field="judet"     icon="map-outline" />
         <FilterButton label="Helység" field="localitate" icon="location-outline" />
-        <FilterButton label="Státusz" field="status" icon="flag-outline" />
+        <FilterButton label="Státusz" field="status"     icon="flag-outline" />
+        <FilterButton label="Zóna"   field="zona"       icon="layers-outline" />
         {activeCount > 0 && (
           <TouchableOpacity
             style={styles.clearAll}
@@ -104,6 +112,7 @@ export default function FilterBar({ deliveries, filters, onFilterChange }) {
               onFilterChange('judet', null);
               onFilterChange('localitate', null);
               onFilterChange('status', null);
+              onFilterChange('zona', null);
             }}
           >
             <Ionicons name="close-circle" size={14} color="#C0001A" />
@@ -112,9 +121,10 @@ export default function FilterBar({ deliveries, filters, onFilterChange }) {
         )}
       </ScrollView>
 
-      <PickerModal field="judet" items={judete} />
+      <PickerModal field="judet"     items={judete} />
       <PickerModal field="localitate" items={localitati} />
-      <PickerModal field="status" items={STATUS_OPTIONS} />
+      <PickerModal field="status"    items={STATUS_OPTIONS} />
+      <PickerModal field="zona"      items={zonak} />
     </>
   );
 }
@@ -122,17 +132,6 @@ export default function FilterBar({ deliveries, filters, onFilterChange }) {
 const styles = StyleSheet.create({
   scroll: { flexGrow: 0 },
   scrollContent: { paddingHorizontal: 12, paddingVertical: 4, gap: 8 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#F0F0F0',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  chipActive: { backgroundColor: '#C0001A', borderColor: '#C0001A' },
-  chipText: { fontSize: 13, color: '#444' },
-  chipTextActive: { color: '#FFF', fontWeight: '600' },
   filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
