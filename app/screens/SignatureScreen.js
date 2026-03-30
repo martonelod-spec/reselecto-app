@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, SafeAreaView, Alert,
 } from 'react-native';
-import SignatureCanvas from 'expo-signature-canvas';
+import SignatureCanvas from 'react-native-signature-canvas';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import { uploadSignatureBase64 } from '../services/dropboxService';
